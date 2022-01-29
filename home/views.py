@@ -9,87 +9,149 @@ import json
 
 DB_NAME = 'carrot_db'
 
-def login_check(token):
-    dic = {}
-    data = decrypt(token) # "mysecret{'user_id':text,}"
-    if KEY in data:
-        dic = json.loads(data[len(KEY):])
-        user_id = dic['user_id']
-        return True, user_id
-    else:
-        return False, None
+# post 형식 체크
+def get_post(request): # return: err_flag, post, err
+    data = {}
+    try:
+        post = json.loads(request.body.decode('utf-8'))
+        return False, post, None
+    except:
+        data['state'] = False
+        data['detail'] = 'post 형식 에러'
+        return True, None, json.dumps(data)
+
+# 키워드 유무 체크
+def keyword_check(check_list, post): # return: err_flag, err
+    data = {}
+    for check in check_list:
+        if not check in post:
+            data['state'] = False
+            data['detail'] = '키 누락 : {}'.format(check)
+            return True, json.dumps(data)
+    return False, None
+
+# 토큰 인증
+def token_auth(token): # return: err_flag, user_id, err
+    data = {}
+    data['state'] = False
+    data['detail'] = 'user_token이 NULL이거나 변조됨'
+    try: dec_token = decrypt(token) # "mysecret{'user_id':text,}"
+    except: return True, None, json.dumps(data)
+    
+    if not KEY in dec_token:
+        return True, None, json.dumps(data)
+
+    dic = json.loads(dec_token[len(KEY):])
+    user_id = dic['user_id']
+    return False, user_id, None
 
 def index(request):
     data = {}
-    data['state'] = 'OK'
+    data['state'] = True
+    data['detail'] = None
     return HttpResponse(json.dumps(data))
 
 @csrf_exempt
 def login(request):
     data = {}
-    post = json.loads(request.body.decode('utf-8')) # dic
-    
+
+    # post 형식 체크
+    err_flag, post, err = get_post(request)
+    if err_flag: return HttpResponse(err)
+
+    # 키워드 유무 체크
     check_list = ['user_id', 'user_pw', ]
-    for check in check_list:
-        if not check in post:
-            data['state'] = 'incorrect access'
-            return HttpResponse(json.dumps(data))
+    err_flag, err = keyword_check(check_list, post)
+    if err_flag: return HttpResponse(err)
 
     user_id = post['user_id']
     user_pw = hash(post['user_pw'])
-
     user = Users.objects.using(DB_NAME).filter(Q(user_id=user_id) & Q(user_pw=user_pw))
 
-    if user:
-        user[0].user_last_login_datetime = timezone.now()
-        user[0].save()
-        
-        temp = KEY + json.dumps({'user_id':user[0].user_id})
-        enc_str = encrypt(temp)
-        data['state'] = 'success login'
-        data['user_token'] = enc_str
-        data['user_idx'] = user[0].user_idx
-        data['user_nickname'] = user[0].user_nickname
-        data['user_profile'] = user[0].user_profile
-        data['user_latitude'] = user[0].user_latitude
-        data['user_longitude'] = user[0].user_longitude
+    if not user:
+        data['state'] = False
+        data['detail'] = '로그인정보 불일치'
+        return HttpResponse(json.dumps(data))
 
-        return HttpResponse(json.dumps(data))
-    else:
-        data['state'] = 'No User'
-        return HttpResponse(json.dumps(data))
+    user[0].user_last_login_datetime = timezone.now()
+    user[0].save()
+    
+    temp = KEY + json.dumps({'user_id':user[0].user_id})
+    user_token = encrypt(temp)
+    data['state'] = True
+    data['detail'] = 'login 성공'
+    data['user_token'] = user_token
+    data['user_idx'] = user[0].user_idx
+    data['user_nickname'] = user[0].user_nickname
+    data['user_profile'] = user[0].user_profile
+    data['user_latitude'] = user[0].user_latitude
+    data['user_longitude'] = user[0].user_longitude
+    return HttpResponse(json.dumps(data))
+        
+
+@csrf_exempt
+def auto_login(request):
+    data = {}
+
+    # post 형식 체크
+    err_flag, post, err = get_post(request)
+    if err_flag: return HttpResponse(err)
+
+    # 키워드 유무 체크
+    check_list = ['user_token', ]
+    err_flag, err = keyword_check(check_list, post)
+    if err_flag: return HttpResponse(err)
+
+    # 토큰 인증
+    user_token = post['user_token']
+    err_flag, user_id, err = token_auth(user_token)
+    if err_flag: return HttpResponse(err)
+
+    user = Users.objects.using(DB_NAME).filter(Q(user_id=user_id))
+    data['state'] = True
+    data['detail'] = 'auto_login 성공'
+    data['user_idx'] = user[0].user_idx
+    data['user_nickname'] = user[0].user_nickname
+    data['user_profile'] = user[0].user_profile
+    data['user_latitude'] = user[0].user_latitude
+    data['user_longitude'] = user[0].user_longitude
+    return HttpResponse(json.dumps(data))
+        
+
 
 @csrf_exempt
 def join_check(request):
     data = {}
-    post = json.loads(request.body.decode('utf-8'))
-    value = post['value']
-    field = post['field']
+
+    # post 형식 체크
+    err_flag, post, err = get_post(request)
+    if err_flag: return HttpResponse(err)
 
     for check in ['user_id', 'user_phone', 'user_nickname']:
-        if check == field:
-            dic = {check:value}
+        if check == post['field']:
+            dic = {check:post['value']}
             user = Users.objects.using(DB_NAME).filter(**dic)
-            if user: 
-                data['state'] = 'exist {}'.format(check)
-                return HttpResponse(json.dumps(data))
-            else:
-                data['state'] = 'unique {}'.format(check)
-                return HttpResponse(json.dumps(data))
+            # 존재하면 False, exist ~~
+            data['state'] = not bool(user)
+            data['detail'] = '{} {}'.format('exist' if bool(user) else 'unique', check)
+            return HttpResponse(json.dumps(data))
     else:
-        data['state'] = 'incorrect access'
+        data['state'] = False
+        data['detail'] = 'user_id, user_phone, user_nickname 중 하나를 안보냄'
         return HttpResponse(json.dumps(data))
 
 @csrf_exempt
 def join(request):
     data = {}
-    post = json.loads(request.body.decode('utf-8'))
 
+    # post 형식 체크
+    err_flag, post, err = get_post(request)
+    if err_flag: return HttpResponse(err)
+
+    # 키워드 유무 체크
     check_list = ['user_id', 'user_pw', 'user_nickname', 'user_phone', 'user_birth', ] # 2021-01-01
-    for check in check_list:
-        if not check in post:
-            data['state'] = 'incorrect access'
-            return HttpResponse(json.dumps(data))
+    err_flag, err = keyword_check(check_list, post)
+    if err_flag: return HttpResponse(err)
     
     values = [post[key] for key in check_list]
     dic = dict(zip(check_list, values))
@@ -98,22 +160,35 @@ def join(request):
     new_user.user_delete_flag = 'N'
     new_user.save(using=DB_NAME)
 
-    data['state'] = 'success join'
+    data['state'] = True
+    data['detail'] = '회원가입 성공'
     return HttpResponse(json.dumps(data))
-    
+
+@csrf_exempt
 def location(request):
     data = {}
-    post = json.loads(request.body.decode('utf-8'))
 
-    token = post['token']
-    state, user_id = login_check(token)
-    if state:
-        user = Users.objects.using(DB_NAME).filter(Q(user_id=user_id))
-        data['user_latitude'] = user[0].user_latitude
-        data['user_longitude'] = user[0].user_longitude
-        return HttpResponse(json.dumps(data))
+    # post 형식 체크
+    err_flag, post, err = get_post(request)
+    if err_flag: return HttpResponse(err)
 
+    # 키워드 유무 체크
+    check_list = ['user_token', ]
+    err_flag, err = keyword_check(check_list, post)
+    if err_flag: return HttpResponse(err)
 
+    # 토큰 인증
+    user_token = post['user_token']
+    err_flag, user_id, err = token_auth(user_token)
+    if err_flag: return HttpResponse(err)
+
+    user = Users.objects.using(DB_NAME).filter(Q(user_id=user_id))
+    data['state'] = True
+    data['detail'] = 'db에서 location정보 가져오기 성공'
+    data['user_latitude'] = user[0].user_latitude
+    data['user_longitude'] = user[0].user_longitude
+    return HttpResponse(json.dumps(data))
+        
 
 
 
