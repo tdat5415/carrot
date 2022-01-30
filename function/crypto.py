@@ -1,6 +1,7 @@
 from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
 from Crypto.Util.Padding import pad, unpad
+from Crypto.Random import get_random_bytes
 from base64 import b64encode, b64decode
 
 KEY = 'MySecretKey'
@@ -32,3 +33,8 @@ def hash(plain_str):
     h = sha.digest()
     h_str = b64encode(h).decode('utf-8')
     return h_str
+
+def get_random_str():
+    r = get_random_bytes(16)
+    r_str = b64encode(r).decode('utf-8')
+    return r_str

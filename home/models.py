@@ -19,8 +19,7 @@ class Users(models.Model):
     user_last_login_datetime = models.DateTimeField(blank=True, null=True)
     user_delete_flag = models.CharField(max_length=1)
     user_delete_datetime = models.DateTimeField(blank=True, null=True)
-    user_latitude = models.CharField(max_length=50, blank=True, null=True)
-    user_longitude = models.CharField(max_length=50, blank=True, null=True)
+    user_address = models.CharField(max_length=30, blank=True, null=True)
     user_profile = models.TextField(blank=True, null=True)
 
     class Meta:

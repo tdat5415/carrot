@@ -3,47 +3,13 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
 from django.utils import timezone
-from home.crypto import encrypt, decrypt, hash, KEY
+from function.crypto import encrypt, decrypt, hash, get_random_str, KEY
+from function.location import get_address, get_coordinates
+from function.check import get_post, keyword_check, token_auth
 from .models import *
 import json
 
 DB_NAME = 'carrot_db'
-
-# post 형식 체크
-def get_post(request): # return: err_flag, post, err
-    data = {}
-    try:
-        post = json.loads(request.body.decode('utf-8'))
-        return False, post, None
-    except:
-        data['state'] = False
-        data['detail'] = 'post 형식 에러'
-        return True, None, data
-
-# 키워드 유무 체크
-def keyword_check(check_list, post): # return: err_flag, err
-    data = {}
-    for check in check_list:
-        if not check in post:
-            data['state'] = False
-            data['detail'] = '키 누락 : {}'.format(check)
-            return True, data
-    return False, None
-
-# 토큰 인증
-def token_auth(token): # return: err_flag, user_id, err
-    data = {}
-    data['state'] = False
-    data['detail'] = 'user_token이 NULL이거나 변조됨'
-    try: dec_token = decrypt(token) # "mysecret{'user_id':text,}"
-    except: return True, None, data
-    
-    if not KEY in dec_token:
-        return True, None, data
-
-    dic = json.loads(dec_token[len(KEY):])
-    user_id = dic['user_id']
-    return False, user_id, None
 
 def index(request):
     # with open('static/myicon.png', "rb") as f:
@@ -87,8 +53,7 @@ def login(request):
     data['user_idx'] = user[0].user_idx
     data['user_nickname'] = user[0].user_nickname
     data['user_profile'] = user[0].user_profile
-    data['user_latitude'] = user[0].user_latitude
-    data['user_longitude'] = user[0].user_longitude
+    data['user_address'] = user[0].user_address
     return JsonResponse(data)
         
 
@@ -116,8 +81,7 @@ def auto_login(request):
     data['user_idx'] = user[0].user_idx
     data['user_nickname'] = user[0].user_nickname
     data['user_profile'] = user[0].user_profile
-    data['user_latitude'] = user[0].user_latitude
-    data['user_longitude'] = user[0].user_longitude
+    data['user_address'] = user[0].user_address
     return JsonResponse(data)
         
 
@@ -176,7 +140,8 @@ def location(request):
     if err_flag: return JsonResponse(err)
 
     # 키워드 유무 체크
-    check_list = ['user_token', ]
+    # check_list = ['user_latitude', 'user_longitude']
+    check_list = ['user_latitude', 'user_longitude', 'user_token']
     err_flag, err = keyword_check(check_list, post)
     if err_flag: return JsonResponse(err)
 
@@ -185,11 +150,17 @@ def location(request):
     err_flag, user_id, err = token_auth(user_token)
     if err_flag: return JsonResponse(err)
 
-    user = Users.objects.using(DB_NAME).filter(Q(user_id=user_id))
+    user = Users.objects.using(DB_NAME).get(user_id=user_id)
+    # print(post)
+    err_flag, user_address, err = get_address((post['user_latitude'], post['user_longitude']))
+    if err_flag: return JsonResponse(err)
+
+    user.user_address = user_address.split(',')[0]
+    user.save()
+
     data['state'] = True
-    data['detail'] = 'db에서 location정보 가져오기 성공'
-    data['user_latitude'] = user[0].user_latitude
-    data['user_longitude'] = user[0].user_longitude
+    data['detail'] = '좌표 -> 주소 성공'
+    data['user_address'] = user_address
     return JsonResponse(data)
         
 
