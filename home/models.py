@@ -8,27 +8,8 @@
 from django.db import models
 
 
-class Users(models.Model):
-    user_idx = models.BigAutoField(primary_key=True)
-    user_id = models.CharField(unique=True, max_length=50)
-    user_pw = models.CharField(max_length=500)
-    user_nickname = models.CharField(unique=True, max_length=500)
-    user_phone = models.CharField(unique=True, max_length=11)
-    user_birth = models.DateField()
-    user_join_datetime = models.DateTimeField()
-    user_last_login_datetime = models.DateTimeField(blank=True, null=True)
-    user_delete_flag = models.CharField(max_length=1)
-    user_delete_datetime = models.DateTimeField(blank=True, null=True)
-    user_address = models.CharField(max_length=30, blank=True, null=True)
-    user_profile = models.TextField(blank=True, null=True)
-
-    class Meta:
-        managed = False
-        db_table = 'USERS'
-
-
 class Boards(models.Model):
-    board_idx = models.PositiveBigIntegerField(primary_key=True)
+    board_idx = models.BigAutoField(primary_key=True)
     board_title = models.TextField()
     board_body = models.TextField()
     board_type = models.CharField(max_length=1)
@@ -42,33 +23,6 @@ class Boards(models.Model):
     class Meta:
         managed = False
         db_table = 'BOARDS'
-
-
-class Comment(models.Model):
-    comment_idx = models.BigAutoField(primary_key=True)
-    comment_writer_idx = models.ForeignKey('Users', models.DO_NOTHING, db_column='comment_writer_idx', blank=True, null=True)
-    comment_board_idx = models.ForeignKey('Boards', models.DO_NOTHING, db_column='comment_board_idx', blank=True, null=True)
-    comment_write_datetime = models.DateTimeField()
-    comment_body = models.TextField()
-    comment_like_num = models.PositiveIntegerField()
-    comment_reply_idx = models.ForeignKey('self', models.DO_NOTHING, db_column='comment_reply_idx', blank=True, null=True)
-    comment_delete_flag = models.CharField(max_length=1)
-    comment_delete_datetime = models.DateTimeField(blank=True, null=True)
-
-    class Meta:
-        managed = False
-        db_table = 'COMMENT'
-
-
-class Notices(models.Model):
-    notice_idx = models.BigAutoField(primary_key=True)
-    notice_title = models.TextField()
-    notice_body = models.TextField()
-    notice_send_datetime = models.DateTimeField()
-
-    class Meta:
-        managed = False
-        db_table = 'NOTICES'
 
 
 class BoardImages(models.Model):
@@ -96,3 +50,49 @@ class Chat(models.Model):
     class Meta:
         managed = False
         db_table = 'CHAT'
+
+
+class Comment(models.Model):
+    comment_idx = models.BigAutoField(primary_key=True)
+    comment_writer_idx = models.ForeignKey('Users', models.DO_NOTHING, db_column='comment_writer_idx', blank=True, null=True)
+    comment_board_idx = models.ForeignKey('Boards', models.DO_NOTHING, db_column='comment_board_idx')
+    comment_write_datetime = models.DateTimeField()
+    comment_body = models.TextField()
+    comment_like_num = models.PositiveIntegerField()
+    comment_reply_idx = models.ForeignKey('self', models.DO_NOTHING, db_column='comment_reply_idx', blank=True, null=True)
+    comment_delete_flag = models.CharField(max_length=1)
+    comment_delete_datetime = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'COMMENT'
+
+
+class Notices(models.Model):
+    notice_idx = models.BigAutoField(primary_key=True)
+    notice_title = models.TextField()
+    notice_body = models.TextField()
+    notice_send_datetime = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = 'NOTICES'
+
+
+class Users(models.Model):
+    user_idx = models.BigAutoField(primary_key=True)
+    user_id = models.CharField(unique=True, max_length=50)
+    user_pw = models.CharField(max_length=500)
+    user_nickname = models.CharField(unique=True, max_length=500)
+    user_phone = models.CharField(unique=True, max_length=11)
+    user_birth = models.DateField()
+    user_join_datetime = models.DateTimeField()
+    user_last_login_datetime = models.DateTimeField(blank=True, null=True)
+    user_delete_flag = models.CharField(max_length=1)
+    user_delete_datetime = models.DateTimeField(blank=True, null=True)
+    user_profile = models.TextField(blank=True, null=True)
+    user_address = models.CharField(max_length=30, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'USERS'

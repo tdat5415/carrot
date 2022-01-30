@@ -1,0 +1,17 @@
+test의 토큰
+AG8eCjWt9vStw8wJBxSgHddM0hi/O23utBCNeorvhgQ=
+
+/join/
+{"user_id":"test", "user_pw":"test", "user_nickname":"test", "user_phone":"01054154047", "user_birth":"2022-02-02"}
+
+/login/
+{"user_id":"test", "user_pw":"test"}
+
+/location/
+{"user_token":"AG8eCjWt9vStw8wJBxSgHddM0hi/O23utBCNeorvhgQ=", "user_latitude":37.19932, "user_longitude":127.00052}
+
+/board/
+{"user_token":"AG8eCjWt9vStw8wJBxSgHddM0hi/O23utBCNeorvhgQ=", "board_type":"F"}
+
+/board/create/
+{"user_token":"AG8eCjWt9vStw8wJBxSgHddM0hi/O23utBCNeorvhgQ=", "board_title":"myfirstboard", "board_type":"F", "board_body":"hello"}

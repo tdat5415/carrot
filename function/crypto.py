@@ -34,7 +34,10 @@ def hash(plain_str):
     h_str = b64encode(h).decode('utf-8')
     return h_str
 
-def get_random_str():
-    r = get_random_bytes(16)
-    r_str = b64encode(r).decode('utf-8')
+def get_random_str(bytes=False):
+    # r = get_random_bytes(16)
+    # r_str = b64encode(r).decode('utf-8')
+    # return r_str
+    r = get_random_bytes(8)
+    r_str = str(int.from_bytes(r, byteorder="big"))
     return r_str
