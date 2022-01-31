@@ -7,24 +7,13 @@ from base64 import b64encode, b64decode
 KEY = 'MySecretKey'
 IV = 'MyInitialVector'
 
-# def pad(str_b, size, value=b'\x0c'):
-#     r = len(str_b) % size
-#     q = len(str_b) // size
-#     if r: q += 1
-#     p_size = q*size - len(str_b)
-#     str_b += value*p_size
-#     return str_b
-
-# def unpad(str_b, size, value=b'\x0c'):
-#     return str_b.split(value)[0]
-    
 
 def encrypt(plain_str): # 문자열 들어옴
     data = pad(plain_str.encode('utf-8'), AES.block_size) # 문자열 -> 바이트변환후, block_size로 제로패딩 길이가 16배수
     key = pad(KEY.encode('utf-8'), AES.block_size) # 마찬가지
     iv = pad(IV.encode('utf-8'), AES.block_size) # 마찬가지
 
-    cipher = AES.new(key, AES.MODE_CBC, iv=iv, ) # 객체 생성
+    cipher = AES.new(key, AES.MODE_CBC, iv=iv) # 객체 생성
     enc = cipher.encrypt(data) # 16배수길이의 바이트문자열을 암호화
     enc_str = b64encode(enc).decode('utf-8') # base 64로 인코드 후 바이트-> 문자열
     return enc_str
@@ -53,3 +42,20 @@ def get_random_str():
     r = get_random_bytes(8)
     r_str = str(int.from_bytes(r, byteorder="big"))
     return r_str
+
+
+import sys
+
+if __name__ == '__main__':
+    mode = sys.argv[1]
+    s = sys.argv[2]
+    if mode == '-enc':
+        print(encrypt(s), end='')
+    elif mode == '-dec':
+        print(decrypt(s), end='')
+    elif mode == '-hash':
+        print(hash(s), end='')
+    else:
+        print(get_random_str(), end='')
+        
+    

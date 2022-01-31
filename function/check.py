@@ -30,9 +30,9 @@ def token_auth(token): # return: err_flag, user_id, err
     try: dec_token = decrypt(token) # "mysecret{'user_id':text,}"
     except: return True, None, data
     
-    if not KEY in dec_token:
-        return True, None, data
+    # if not KEY in dec_token:
+    #     return True, None, data
 
-    dic = json.loads(dec_token[len(KEY):])
+    dic = json.loads(dec_token)#[len(KEY):])
     user_id = dic['user_id']
     return False, user_id, None

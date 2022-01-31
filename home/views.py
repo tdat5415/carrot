@@ -11,14 +11,12 @@ import json
 
 DB_NAME = 'carrot_db'
 
+@csrf_exempt
 def index(request):
-    # with open('static/myicon.png', "rb") as f:
-    #     return HttpResponse(f.read(), content_type="image/url")
     data = {}
     data['state'] = True
     data['detail'] = None
     return JsonResponse(data)
-    # return HttpResponse(json.dumps(data))
 
 @csrf_exempt
 def login(request):
@@ -45,7 +43,7 @@ def login(request):
     user[0].user_last_login_datetime = timezone.now()
     user[0].save()
     
-    temp = KEY + json.dumps({'user_id':user[0].user_id})
+    temp = json.dumps({'user_id':user[0].user_id}) # KEY + 
     user_token = encrypt(temp)
     data['state'] = True
     data['detail'] = 'login 성공'
@@ -79,6 +77,7 @@ def auto_login(request):
     data['state'] = True
     data['detail'] = 'auto_login 성공'
     data['user_idx'] = user[0].user_idx
+    data['user_id'] = user[0].user_id
     data['user_nickname'] = user[0].user_nickname
     data['user_profile'] = user[0].user_profile
     data['user_address'] = user[0].user_address
@@ -162,8 +161,25 @@ def location(request):
     data['detail'] = '좌표 -> 주소 성공'
     data['user_address'] = user_address
     return JsonResponse(data)
-        
 
+@csrf_exempt
+def token(request):
+    data = {}
+    post = request.POST
+    print(request.headers)
+    print(request.POST)
 
+    # # 키워드 유무 체크
+    check_list = ['user_token', ]
+    err_flag, err = keyword_check(check_list, post)
+    if err_flag: return JsonResponse(err)
 
+    # # 토큰 인증
+    user_token = post['user_token']
+    err_flag, user_id, err = token_auth(user_token)
+    if err_flag: return JsonResponse(err)
+
+    data['user_id'] = user_id
+    print('보냄')
     
+    return JsonResponse(data)

@@ -27,12 +27,14 @@ def index(request):
     print(request.headers)
     print(request.POST)
     print(request.POST['title'])
-    # print(request.FILES)
-    file = request.FILES.getlist('files')[0]
-    handle_uploaded_file(file, get_random_str())
-    print(type(request.FILES))
-    print(type(request.FILES['files']))
-    print(type(request.FILES.getlist('files')[0]))
+    print(request.FILES)
+    # print(request.FILES.getlist('files'))
+    # file = request.FILES.getlist('files')[0]
+    # file_name = handle_uploaded_file(file)
+    # print(file_name)
+    # print(type(request.FILES))
+    # print(type(request.FILES['files']))
+    # print(type(request.FILES.getlist('files')[0]))
     # print(request.body.decode('utf-8'))
     # print(type(request.body.decode('utf-8')))
     # print(json.loads(request.body.decode('utf-8')))
@@ -109,6 +111,9 @@ def board(request):
     data['writers'] = writers
     return JsonResponse(data)
     
+def detail(request, board_idx):
+    pass
+
 @csrf_exempt
 def create(request): # 메모 : 가격, 전번, 지역은 판매랑 광고게시판?
     data = {}
@@ -122,6 +127,12 @@ def create(request): # 메모 : 가격, 전번, 지역은 판매랑 광고게시
     err_flag, err = keyword_check(check_list, post)
     if err_flag: return JsonResponse(err)
 
+    # type이 S일때 키워드 유무 체크
+    if post['board_type'] == 'S':
+        check_list = ['board_price', ]
+        err_flag, err = keyword_check(check_list, post)
+        if err_flag: return JsonResponse(err)
+
     # 토큰 인증
     user_token = post['user_token']
     err_flag, user_id, err = token_auth(user_token)
@@ -134,15 +145,28 @@ def create(request): # 메모 : 가격, 전번, 지역은 판매랑 광고게시
     dic['board_delete_flag'] = 'N'
     dic['board_like_num'] = 0
     dic['board_view_num'] = 0
+    if post['board_type'] == 'S':
+        dic['board_price'] = post['board_price']
+
     board = user.boards_set.create(**dic)
+
+    if post['board_type'] == 'S' and request.FILES and 'files' in request.FILES:
+        files = request.FILES.getlist('files')
+        thumb_flag = True
+        for f in files:
+            file_name = handle_uploaded_file(f)
+            dic = {}
+            dic['image_path_name'] = '/static/{}'.format(file_name)
+            # dic['image_delete_flag'] = 'N'
+            board.board_images_set.create(**dic)
+        
+
 
     data['state'] = True
     data['detail'] = '게시판 생성완료'
     data['board_idx'] = board.board_idx
     return JsonResponse(data)
 
-def detail(request, board_idx):
-    pass
 
     
 
