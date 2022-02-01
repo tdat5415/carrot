@@ -166,8 +166,8 @@ def location(request):
 def token(request):
     data = {}
     post = request.POST
-    print(request.headers)
-    print(request.POST)
+    # print(request.headers)
+    # print(request.POST)
 
     # # 키워드 유무 체크
     check_list = ['user_token', ]
@@ -180,6 +180,6 @@ def token(request):
     if err_flag: return JsonResponse(err)
 
     data['user_id'] = user_id
-    print('보냄')
+    # print('보냄')
     
     return JsonResponse(data)

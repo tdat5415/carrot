@@ -19,6 +19,7 @@ class Boards(models.Model):
     board_delete_datetime = models.DateTimeField(blank=True, null=True)
     board_like_num = models.PositiveIntegerField()
     board_view_num = models.PositiveIntegerField()
+    board_price = models.PositiveIntegerField(blank=True, null=True)
 
     class Meta:
         managed = False
@@ -32,6 +33,7 @@ class BoardImages(models.Model):
     image_delete_flag = models.CharField(max_length=1)
     image_delete_datetime = models.DateTimeField(blank=True, null=True)
     image_board_idx = models.ForeignKey(Boards, models.DO_NOTHING, db_column='image_board_idx', blank=True, null=True)
+    image_thumbnail = models.IntegerField(blank=True, null=True)
 
     class Meta:
         managed = False
@@ -42,8 +44,8 @@ class Chat(models.Model):
     chat_idx = models.BigAutoField(primary_key=True)
     chat_write_datetime = models.DateTimeField()
     chat_body = models.TextField()
-    chat_user_a_idx = models.ForeignKey('Users', models.DO_NOTHING, db_column='chat_user_a_idx', blank=True, null=True, related_name='chat_user_a_idx_set')
-    chat_user_b_idx = models.ForeignKey('Users', models.DO_NOTHING, db_column='chat_user_b_idx', blank=True, null=True, related_name='chat_user_b_idx_set')
+    chat_user_a_idx = models.ForeignKey('Users', models.DO_NOTHING, db_column='chat_user_a_idx', blank=True, null=True, related_name='chat_a_set')
+    chat_user_b_idx = models.ForeignKey('Users', models.DO_NOTHING, db_column='chat_user_b_idx', blank=True, null=True, related_name='chat_b_set')
     chat_delete_flag = models.CharField(max_length=1)
     chat_delete_datetime = models.DateTimeField(blank=True, null=True)
 
@@ -55,7 +57,7 @@ class Chat(models.Model):
 class Comment(models.Model):
     comment_idx = models.BigAutoField(primary_key=True)
     comment_writer_idx = models.ForeignKey('Users', models.DO_NOTHING, db_column='comment_writer_idx', blank=True, null=True)
-    comment_board_idx = models.ForeignKey('Boards', models.DO_NOTHING, db_column='comment_board_idx')
+    comment_board_idx = models.ForeignKey(Boards, models.DO_NOTHING, db_column='comment_board_idx')
     comment_write_datetime = models.DateTimeField()
     comment_body = models.TextField()
     comment_like_num = models.PositiveIntegerField()
