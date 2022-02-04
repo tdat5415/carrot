@@ -21,6 +21,7 @@ def index(request):
 @csrf_exempt
 def login(request):
     data = {}
+    # post = request.POST
 
     # post 형식 체크
     err_flag, post, err = get_post(request)
@@ -58,10 +59,11 @@ def login(request):
 @csrf_exempt
 def auto_login(request):
     data = {}
+    post = request.POST
 
     # post 형식 체크
-    err_flag, post, err = get_post(request)
-    if err_flag: return JsonResponse(err)
+    # err_flag, post, err = get_post(request)
+    # if err_flag: return JsonResponse(err)
 
     # 키워드 유무 체크
     check_list = ['user_token', ]
@@ -179,7 +181,8 @@ def token(request):
     err_flag, user_id, err = token_auth(user_token)
     if err_flag: return JsonResponse(err)
 
+    data['state'] = True
+    data['detail'] = '토큰 인증 성공'
     data['user_id'] = user_id
-    # print('보냄')
     
     return JsonResponse(data)

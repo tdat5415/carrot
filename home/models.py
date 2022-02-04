@@ -40,6 +40,18 @@ class BoardImages(models.Model):
         db_table = 'BOARD_IMAGES'
 
 
+class BoardLikes(models.Model):
+    like_idx = models.BigAutoField(primary_key=True)
+    like_user_idx = models.ForeignKey('Users', models.DO_NOTHING, db_column='like_user_idx')
+    like_board_idx = models.ForeignKey(Boards, models.DO_NOTHING, db_column='like_board_idx')
+    like_datetime = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = 'BOARD_LIKES'
+        unique_together = (('like_user_idx', 'like_board_idx'),)
+
+
 class Chat(models.Model):
     chat_idx = models.BigAutoField(primary_key=True)
     chat_write_datetime = models.DateTimeField()

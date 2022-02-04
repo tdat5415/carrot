@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Q
+from django.db.models import Q, F
 from django.utils import timezone
 from function.crypto import encrypt, decrypt, hash, get_random_str, KEY
 from function.location import get_address, get_coordinates
@@ -16,53 +16,32 @@ import os
 # application/x-www-form-urlencoded
 
 DB_NAME = 'carrot_db'
+NUM_PER_PAGE = 5
 
 @csrf_exempt
 def index(request):
     data = {}
 
     print('###')
-    # print(dir(request))
-    # print(request.header)
-    # print(request.body)
     print(request.headers)
     print(request.POST)
     print(request.POST['title'])
-    print(request.FILES)
-    print(request.FILES['files'])
-    # print(request.FILES.getlist('files'))
-    # file = request.FILES.getlist('files')[0]
-    # file_name = handle_uploaded_file(file)
-    # print(file_name)
-    # print(type(request.FILES))
-    # print(type(request.FILES['files']))
-    # print(type(request.FILES.getlist('files')[0]))
-    # print(request.body.decode('utf-8'))
-    # print(type(request.body.decode('utf-8')))
-    # print(json.loads(request.body.decode('utf-8')))
-    # ff = FileFieldFormView()
     print('####')
-    # aa = ff.post(request)
-    # print(aa)
-    # post 형식 체크
-    # err_flag, post, err = get_post(request)
-    # if err_flag: return JsonResponse(err)
 
     data['state'] = True
     data['detail'] = None
-    # name = get_random_str() + '.jpg'
-    # err_flag, err = upload_file(request, name)
-    # if err_flag: return JsonResponse(err)
 
     return JsonResponse(data)
 
 @csrf_exempt
 def board(request):
     data = {}
+
+    post = request.POST
     
     # post 형식 체크
-    err_flag, post, err = get_post(request)
-    if err_flag: return JsonResponse(err)
+    # err_flag, post, err = get_post(request)
+    # if err_flag: return JsonResponse(err)
 
     # 키워드 유무 체크
     check_list = ['user_token', 'board_type']
@@ -82,41 +61,65 @@ def board(request):
         data['detail'] = 'db에 주소 저장이 안되있음'
         return JsonResponse(data)
 
-    users = Users.objects.using(DB_NAME).filter(user_address=user.user_address)
+    user_idxs = Users.objects.using(DB_NAME).filter(user_address=user.user_address).values_list("pk", flat=True)
     # users = Users.objects.using(DB_NAME).filter(Q(user_address=user.user_address) & ~Q(user_id=user_id))
-    if not users:
+    if not user_idxs:
         data['state'] = False
         data['detail'] = '주변 사용자들이 없습니다.'
         return JsonResponse(data)
 
-    users_boards = [user.boards_set.filter(board_type=post['board_type']) for user in users]
-    users_boards = reduce(lambda x,y:x|y, users_boards)
-    if not users_boards:
+
+    if "page" in post: data["page"] = post["page"] + 1
+    else: data["page"] = 0
+    p1, p2 = data["page"]*NUM_PER_PAGE, (data["page"]+1)*NUM_PER_PAGE
+        
+    # users_boards = [user.boards_set.filter(board_type=post['board_type']) for user in users]
+    # users_boards = reduce(lambda x,y:x|y, users_boards)
+    boards = Boards.objects.using(DB_NAME).filter(
+        Q(board_type=post['board_type']) & \
+        Q(board_writer_idx__in=list(user_idxs))).order_by("-board_write_datetime")[p1:p2]
+
+    if not boards:
         data['state'] = False
         data['detail'] = '주변 사용자들의 게시글이 없습니다.'
         return JsonResponse(data)
 
+    # data['state'] = True
+    # data['detail'] = '주변사용자 게시글({}) 가져오기 성공'.format(post['board_type'])
+    # data["boards"] = []
+    # keys = ["idx", "title", "write_datetime", "like_num", "price", ]
+    # for b in users_boards:
+    #     values = map(lambda key:getattr(b, "board_" + key), keys)
+    #     dic = dict(zip(keys, values))
+    #     dic["writer"] = b.board_writer_idx.user_id
+    #     imgs = b.boardimages_set.filter(image_thumbnail=True)
+    #     dic["thumbnail"] = imgs[0].image_path_name if imgs else None
+    #     data["boards"].append(dic)
+            
+    dic = {}
+    dic['idx'] = [b.board_idx for b in boards]
+    dic['title'] = [b.board_title for b in boards]
+    dic['write_datetime'] = [b.board_write_datetime for b in boards]
+    dic['like_num'] = [b.board_like_num for b in boards]
+    dic['writer'] = [b.board_writer_idx.user_id for b in boards]
+    dic['thumbnail'] = [b.boardimages_set.filter(image_thumbnail=True) for b in boards]
+    dic['thumbnail'] = [img[0].image_path_name if img else None for img in dic['thumbnail']]
+    dic['price'] = [b.board_price for b in boards]
+
     data['state'] = True
     data['detail'] = '주변사용자 게시글({}) 가져오기 성공'.format(post['board_type'])
-    data['idxs'] = [b.board_idx for b in users_boards]
-    data['titles'] = [b.board_title for b in users_boards]
-    data['bodies'] = [b.board_body for b in users_boards]
-    data['write_datetimes'] = [b.board_write_datetime for b in users_boards]
-    data['like_nums'] = [b.board_like_num for b in users_boards]
-    data['writers'] = [b.board_writer_idx.user_id for b in users_boards]
-    data['thumbnails'] = [b.boardimages_set.filter(image_thumbnail=True) for b in users_boards]
-    data['thumbnails'] = [img[0].image_path_name if img else None for img in data['thumbnails']]
-    if post['board_type'] == 'S':
-        data['prices'] = [b.board_price for b in users_boards]
+    data["boards"] = [dict(zip(dic.keys(), row)) for row in zip(*dic.values())]
+
     return JsonResponse(data)
 
 @csrf_exempt
 def detail(request, board_idx):
     data = {}
+    post = request.POST
 
     # post 형식 체크
-    err_flag, post, err = get_post(request)
-    if err_flag: return JsonResponse(err)
+    # err_flag, post, err = get_post(request)
+    # if err_flag: return JsonResponse(err)
 
     # 키워드 유무 체크
     check_list = ['user_token', ]
@@ -139,19 +142,25 @@ def detail(request, board_idx):
     data['state'] = True
     data['detail'] = "해당 게시글 가져오기 성공"
     data['user_id'] = user_id
-    data['board_title'] = b.board_title
-    data['board_body'] = b.board_body
-    data['board_type'] = b.board_type
-    data['board_write_datetime'] = b.board_write_datetime
-    data['board_price'] = b.board_price
-    data['image_paths'] = list(b.boardimages_set.values_list('image_path_name', flat=True))
 
+    # 게시글 정보
+    keys = ["board_title", "board_body", "board_type", "board_write_datetime", "board_price", ]
+    for key in keys:
+        data[key] = getattr(b, key)
+    data['image_paths'] = list(b.boardimages_set.values_list('image_path_name', flat=True))
+    
+    # 유저가 추천을 눌렀는지
+    u = Users.objects.using(DB_NAME).get(user_id=user_id)
+    like = b.boardlikes_set.filter(like_user_idx=u)
+    data["like"] = bool(like)
+    data["num_likes"] = len(b.boardlikes_set.all())
+
+    # 작성자 정보
     data['writer_id'] = None
     if b.board_writer_idx:
-        data['writer_id'] = b.board_writer_idx.user_id
-        data['writer_nickname'] = b.board_writer_idx.user_nickname
-        data['writer_phone'] = b.board_writer_idx.user_phone
-        data['writer_address'] = b.board_writer_idx.user_address
+        keys = ["id", "nickname", "phone", "address", "profile"]
+        for key in keys:
+            data["writer_" + key] = getattr(b.board_writer_idx, "user_" + key)
         
     return JsonResponse(data)
 
@@ -230,11 +239,6 @@ def edit(request, board_idx):
     data['board_idx'] = b.board_idx
     return JsonResponse(data)
 
-
-
-
-
-
 @csrf_exempt
 def delete(request, board_idx):
     data = {}
@@ -274,10 +278,14 @@ def delete(request, board_idx):
 def create(request): # 메모 : 가격, 전번, 지역은 판매랑 광고게시판?
     data = {}
     keys = []
+
     # post 형식 체크
     # err_flag, post, err = get_post(request)
     # if err_flag: return JsonResponse(err)
     post = request.POST
+    print(request.POST)
+    print(request.FILES)
+    print(request.headers)
 
     # 키워드 유무 체크
     check_list = ['user_token', 'board_title', 'board_type', 'board_body']
@@ -335,8 +343,46 @@ def create(request): # 메모 : 가격, 전번, 지역은 판매랑 광고게시
     data['board_idx'] = board.board_idx
     return JsonResponse(data)
 
+@csrf_exempt
+def like(request, board_idx):
+    data = {}
+    post = request.POST
 
+    # 키워드 유무 체크
+    check_list = ['user_token', "like_sign"]
+    err_flag, err = keyword_check(check_list, post)
+    if err_flag: return JsonResponse(err)
+
+    # 토큰 인증
+    user_token = post['user_token']
+    err_flag, user_id, err = token_auth(user_token)
+    if err_flag: return JsonResponse(err)
     
+    board = Boards.objects.using(DB_NAME).filter(board_idx=board_idx)
+    if not board:
+        data['state'] = False
+        data['detail'] = "해당 게시글이 사라짐"
+        return JsonResponse(data)
+
+    board = board[0]
+    user = Users.objects.using(DB_NAME).get(user_id=user_id)
+    
+    if int(post["like_sign"]): # 추천하기
+        user.boardlikes_set.create(like_board_idx=board)
+        board.board_like_num = F("board_like_num") + 1
+        board.save()
+    else: # 추천취소
+        if 0 < len(board.boardlikes_set.all()):
+            board.board_like_num = F("board_like_num") - 1
+            board.save()
+        user.boardlikes_set.filter(like_board_idx=board).delete()
+    board.refresh_from_db()
+
+    data["state"] = True
+    data["detail"] = "추천{} 성공".format("하기" if int(post["like_sign"]) else "취소")
+    data["num_likes"] = len(board.boardlikes_set.all())
+    return JsonResponse(data)
+
 
 
     
