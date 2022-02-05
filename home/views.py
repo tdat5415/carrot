@@ -125,7 +125,6 @@ def join(request):
     dic = dict(zip(check_list, values))
     new_user = Users(**dic)
     new_user.user_pw = hash(new_user.user_pw)
-    new_user.user_delete_flag = 'N'
     new_user.save(using=DB_NAME)
 
     data['state'] = True

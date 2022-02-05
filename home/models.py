@@ -15,10 +15,10 @@ class Boards(models.Model):
     board_type = models.CharField(max_length=1)
     board_writer_idx = models.ForeignKey('Users', models.DO_NOTHING, db_column='board_writer_idx', blank=True, null=True)
     board_write_datetime = models.DateTimeField()
-    board_delete_flag = models.CharField(max_length=1)
+    board_delete_flag = models.IntegerField(default=False)
     board_delete_datetime = models.DateTimeField(blank=True, null=True)
-    board_like_num = models.PositiveIntegerField()
-    board_view_num = models.PositiveIntegerField()
+    board_like_num = models.PositiveIntegerField(default=0)
+    board_view_num = models.PositiveIntegerField(default=0)
     board_price = models.PositiveIntegerField(blank=True, null=True)
     board_category_idx = models.ForeignKey('BoardCategory', models.DO_NOTHING, db_column='board_category_idx', blank=True, null=True)
 
@@ -40,7 +40,7 @@ class BoardImages(models.Model):
     image_idx = models.BigAutoField(primary_key=True)
     image_path_name = models.CharField(unique=True, max_length=1500, db_collation='euckr_korean_ci')
     image_upload_datetime = models.DateTimeField()
-    image_delete_flag = models.CharField(max_length=1)
+    image_delete_flag = models.IntegerField(default=False)
     image_delete_datetime = models.DateTimeField(blank=True, null=True)
     image_board_idx = models.ForeignKey(Boards, models.DO_NOTHING, db_column='image_board_idx', blank=True, null=True)
     image_thumbnail = models.IntegerField(blank=True, null=True)
@@ -68,7 +68,7 @@ class Chat(models.Model):
     chat_body = models.TextField()
     chat_user_a_idx = models.ForeignKey('Users', models.DO_NOTHING, db_column='chat_user_a_idx', blank=True, null=True, related_name='chat_a_set')
     chat_user_b_idx = models.ForeignKey('Users', models.DO_NOTHING, db_column='chat_user_b_idx', blank=True, null=True, related_name='chat_b_set')
-    chat_delete_flag = models.CharField(max_length=1)
+    chat_delete_flag = models.IntegerField(default=False)
     chat_delete_datetime = models.DateTimeField(blank=True, null=True)
 
     class Meta:
@@ -82,9 +82,9 @@ class Comment(models.Model):
     comment_board_idx = models.ForeignKey(Boards, models.DO_NOTHING, db_column='comment_board_idx')
     comment_write_datetime = models.DateTimeField()
     comment_body = models.TextField()
-    comment_like_num = models.PositiveIntegerField()
+    comment_like_num = models.PositiveIntegerField(default=0)
     comment_reply_idx = models.ForeignKey('self', models.DO_NOTHING, db_column='comment_reply_idx', blank=True, null=True)
-    comment_delete_flag = models.CharField(max_length=1)
+    comment_delete_flag = models.IntegerField(default=False)
     comment_delete_datetime = models.DateTimeField(blank=True, null=True)
 
     class Meta:
@@ -112,7 +112,7 @@ class Users(models.Model):
     user_birth = models.DateField()
     user_join_datetime = models.DateTimeField()
     user_last_login_datetime = models.DateTimeField(blank=True, null=True)
-    user_delete_flag = models.CharField(max_length=1)
+    user_delete_flag = models.IntegerField(default=False)
     user_delete_datetime = models.DateTimeField(blank=True, null=True)
     user_profile = models.TextField(blank=True, null=True)
     user_address = models.CharField(max_length=30, blank=True, null=True)

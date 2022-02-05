@@ -1,5 +1,5 @@
-import json
 from function.crypto import decrypt, KEY
+import json
 
 # post 형식 체크
 def get_post(request): # return: err_flag, post, err
