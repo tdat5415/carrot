@@ -20,10 +20,20 @@ class Boards(models.Model):
     board_like_num = models.PositiveIntegerField()
     board_view_num = models.PositiveIntegerField()
     board_price = models.PositiveIntegerField(blank=True, null=True)
+    board_category_idx = models.ForeignKey('BoardCategory', models.DO_NOTHING, db_column='board_category_idx', blank=True, null=True)
 
     class Meta:
         managed = False
         db_table = 'BOARDS'
+
+
+class BoardCategory(models.Model):
+    category_idx = models.BigAutoField(primary_key=True)
+    category_name = models.CharField(max_length=30)
+
+    class Meta:
+        managed = False
+        db_table = 'BOARD_CATEGORY'
 
 
 class BoardImages(models.Model):

@@ -12,9 +12,6 @@ import json
 from functools import reduce
 import os
 
-# multipart/form-data 요단어 기억
-# application/x-www-form-urlencoded
-
 DB_NAME = 'carrot_db'
 NUM_PER_PAGE = 5
 
@@ -36,15 +33,10 @@ def index(request):
 @csrf_exempt
 def board(request):
     data = {}
-
     post = request.POST
-    
-    # post 형식 체크
-    # err_flag, post, err = get_post(request)
-    # if err_flag: return JsonResponse(err)
 
     # 키워드 유무 체크
-    check_list = ['user_token', 'board_type']
+    check_list = ['user_token', 'board_type', 'board_category_idx']
     err_flag, err = keyword_check(check_list, post)
     if err_flag: return JsonResponse(err)
 
@@ -61,40 +53,31 @@ def board(request):
         data['detail'] = 'db에 주소 저장이 안되있음'
         return JsonResponse(data)
 
-    user_idxs = Users.objects.using(DB_NAME).filter(user_address=user.user_address).values_list("pk", flat=True)
-    # users = Users.objects.using(DB_NAME).filter(Q(user_address=user.user_address) & ~Q(user_id=user_id))
+    if int(post["board_category_idx"]): # 0이 아니면 카테고리 지역전체
+        user_idxs = Users.objects.using(DB_NAME).all().values_list("pk", flat=True)
+    else: # 0이면 홈버튼
+        user_idxs = Users.objects.using(DB_NAME).filter(user_address=user.user_address).values_list("pk", flat=True)
     if not user_idxs:
         data['state'] = False
         data['detail'] = '주변 사용자들이 없습니다.'
         return JsonResponse(data)
 
 
-    if "page" in post: data["page"] = post["page"] + 1
+    if "page" in post and post["page"] != None:
+        data["page"] = int(post["page"]) + 1
     else: data["page"] = 0
     p1, p2 = data["page"]*NUM_PER_PAGE, (data["page"]+1)*NUM_PER_PAGE
         
-    # users_boards = [user.boards_set.filter(board_type=post['board_type']) for user in users]
-    # users_boards = reduce(lambda x,y:x|y, users_boards)
-    boards = Boards.objects.using(DB_NAME).filter(
-        Q(board_type=post['board_type']) & \
-        Q(board_writer_idx__in=list(user_idxs))).order_by("-board_write_datetime")[p1:p2]
+
+    condition = Q(board_type=post['board_type']) & Q(board_writer_idx__in=list(user_idxs))
+    cate = BoardCategory.objects.using(DB_NAME).filter(category_idx=int(post["board_category_idx"]))
+    if cate: condition &= Q(board_category_idx=cate[0])
+    boards = Boards.objects.using(DB_NAME).filter(condition).order_by("-board_write_datetime")[p1:p2]
 
     if not boards:
         data['state'] = False
         data['detail'] = '주변 사용자들의 게시글이 없습니다.'
         return JsonResponse(data)
-
-    # data['state'] = True
-    # data['detail'] = '주변사용자 게시글({}) 가져오기 성공'.format(post['board_type'])
-    # data["boards"] = []
-    # keys = ["idx", "title", "write_datetime", "like_num", "price", ]
-    # for b in users_boards:
-    #     values = map(lambda key:getattr(b, "board_" + key), keys)
-    #     dic = dict(zip(keys, values))
-    #     dic["writer"] = b.board_writer_idx.user_id
-    #     imgs = b.boardimages_set.filter(image_thumbnail=True)
-    #     dic["thumbnail"] = imgs[0].image_path_name if imgs else None
-    #     data["boards"].append(dic)
             
     dic = {}
     dic['idx'] = [b.board_idx for b in boards]
@@ -147,6 +130,7 @@ def detail(request, board_idx):
     keys = ["board_title", "board_body", "board_type", "board_write_datetime", "board_price", ]
     for key in keys:
         data[key] = getattr(b, key)
+    data['board_category'] = b.board_category_idx.category_name if b.board_category_idx else None
     data['image_paths'] = list(b.boardimages_set.values_list('image_path_name', flat=True))
     
     # 유저가 추천을 눌렀는지
@@ -288,7 +272,7 @@ def create(request): # 메모 : 가격, 전번, 지역은 판매랑 광고게시
     print(request.headers)
 
     # 키워드 유무 체크
-    check_list = ['user_token', 'board_title', 'board_type', 'board_body']
+    check_list = ['user_token', 'board_title', 'board_type', 'board_body', "board_category_idx"]
     err_flag, err = keyword_check(check_list, post)
     if err_flag: return JsonResponse(err)
     keys += check_list[1:]
@@ -318,6 +302,8 @@ def create(request): # 메모 : 가격, 전번, 지역은 판매랑 광고게시
     dic['board_view_num'] = 0
     if post['board_type'] == 'S':
         dic['board_price'] = post['board_price']
+    cate = BoardCategory.objects.using(DB_NAME).filter(category_idx=int(post['board_category_idx']))
+    dic['board_category_idx'] = cate[0] if cate else None
 
     board = user.boards_set.create(**dic)
 
@@ -368,10 +354,18 @@ def like(request, board_idx):
     user = Users.objects.using(DB_NAME).get(user_id=user_id)
     
     if int(post["like_sign"]): # 추천하기
+        if user.boardlikes_set.filter(like_board_idx=board):
+            data['state'] = False
+            data['detail'] = '이미 추천을 하였음'
+            return JsonResponse(data)
         user.boardlikes_set.create(like_board_idx=board)
         board.board_like_num = F("board_like_num") + 1
         board.save()
     else: # 추천취소
+        if not user.boardlikes_set.filter(like_board_idx=board):
+            data['state'] = False
+            data['detail'] = '추천이 안돼있음'
+            return JsonResponse(data)
         if 0 < len(board.boardlikes_set.all()):
             board.board_like_num = F("board_like_num") - 1
             board.save()
