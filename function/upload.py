@@ -27,7 +27,6 @@ def handle_files(request, board):
         file_name = handle_uploaded_file(f)
         dic = {}
         dic['image_path_name'] = '/static/{}'.format(file_name)
-        dic['image_delete_flag'] = 'N'
         dic['image_thumbnail'] = thumb_flag
         thumb_flag = False
         board.boardimages_set.create(**dic)

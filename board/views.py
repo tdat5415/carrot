@@ -15,10 +15,14 @@ def index(request):
     print('###')
     # print(request.headers)
     print(request.POST)
-    print(request.FILES)
+    # print(request.FILES)
     print('####')
+    # board = Boards(board_title="asd", board_body="🥺")
+    # board.save(using=DB_NAME)
+    # board.refresh_from_db()
+
     data['state'] = True
-    data['detail'] = None
+    # data['detail'] = board.board_title
     return JsonResponse(data)
 
 @csrf_exempt
@@ -58,7 +62,7 @@ def board(request):
         data['state'] = False
         data['detail'] = '주변 사용자들의 게시글이 없습니다.'
         return JsonResponse(data)
-            
+
     dic = {}
     dic['idx'] = [b.board_idx for b in boards]
     dic['title'] = [b.board_title for b in boards]
@@ -83,14 +87,14 @@ def detail(request, board_idx):
     check_list = ['user_token', ]
     err_flag, err = keyword_check(check_list, post)
     if err_flag: return JsonResponse(err)
-    
+
     # 토큰 인증
     user_token = post['user_token']
     err_flag, user_id, err = token_auth(user_token)
     if err_flag: return JsonResponse(err)
 
     board = get_object_or_404(Boards.objects.using(DB_NAME), board_idx=board_idx)
-    
+
     data['state'] = True
     data['detail'] = "해당 게시글 가져오기 성공"
     data['user_id'] = user_id
@@ -111,7 +115,7 @@ def detail(request, board_idx):
     # 작성자 정보
     data['writer_id'] = None
     if board.board_writer_idx:
-        keys = ["id", "nickname", "phone", "address", "profile"]
+        keys = ["idx", "id", "nickname", "phone", "address", "profile"]
         for key in keys:
             data["writer_" + key] = getattr(board.board_writer_idx, "user_" + key)
     return JsonResponse(data)
@@ -183,7 +187,7 @@ def delete(request, board_idx):
         data['state'] = False
         data['detail'] = "작성자만 삭제가능"
         return JsonResponse(data)
-    
+
     board.delete()
     data['state'] = True
     data['detail'] = "게시글 삭제 완료"
@@ -267,10 +271,4 @@ def like(request, board_idx):
     data["detail"] = "추천{} 성공".format("하기" if int(post["like_sign"]) else "취소")
     data["num_likes"] = board.board_like_num
     return JsonResponse(data)
-
-
-
-    
-        
-
 
