@@ -100,7 +100,7 @@ def detail(request, board_idx):
     data['user_id'] = user_id
 
     # 게시글 정보
-    keys = ["board_title", "board_body", "board_type", "board_write_datetime", "board_price", ]
+    keys = ["board_idx", "board_title", "board_body", "board_type", "board_write_datetime", "board_price", ]
     for key in keys:
         data[key] = getattr(board, key)
     data['board_category'] = board.board_category_idx.category_name if board.board_category_idx else None
@@ -118,6 +118,19 @@ def detail(request, board_idx):
         keys = ["idx", "id", "nickname", "phone", "address", "profile"]
         for key in keys:
             data["writer_" + key] = getattr(board.board_writer_idx, "user_" + key)
+
+    # 댓글 정보
+    data["comments"] = []
+    for com in board.comment_set.all():
+        dic = {}
+        dic["coment_idx"] = com.comment_idx
+        dic["coment_writer_idx"] = com.coment_writer_idx.user_idx
+        dic["coment_writer_id"] = com.coment_writer_idx.user_id
+        dic["coment_write_datetime"] = com.coment_write_datetime
+        dic["coment_body"] = com.comment_body
+        dic["coment_like_num"] = com.comment_like_num
+        data["comments"].append(dic)
+
     return JsonResponse(data)
 
 @csrf_exempt
@@ -271,4 +284,3 @@ def like(request, board_idx):
     data["detail"] = "추천{} 성공".format("하기" if int(post["like_sign"]) else "취소")
     data["num_likes"] = board.board_like_num
     return JsonResponse(data)
-
